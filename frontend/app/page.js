@@ -23,7 +23,7 @@ export default function Home() {
           </Link>
 
           <Link href="/register" className={styles.secondaryButton}>
-            Register
+            Admin Register
           </Link>
         </div>
 
