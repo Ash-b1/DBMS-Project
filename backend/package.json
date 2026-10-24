@@ -5,10 +5,20 @@
   "description": "Clinical Decision Support & Patient Case Retrieval System",
   "scripts": {
     "test-connection": "node scripts/test-connection.js",
-    "db:setup": "node scripts/setup-database.js"
+    "db:setup": "node scripts/setup-database.js",
+    "start": "node server.js",
+    "dev": "node --watch server.js"
   },
   "dependencies": {
+    "bcrypt": "^6.0.0",
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
     "dotenv": "^18.0.9",
+    "express": "^5.3.0",
+    "jsonwebtoken": "^9.0.3",
     "mysql2": "^3.24.6"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
   }
 }

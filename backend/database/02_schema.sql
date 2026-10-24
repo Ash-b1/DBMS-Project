@@ -108,3 +108,17 @@ CREATE TABLE outcome (
     outcome_notes TEXT,
     FOREIGN KEY (consultation_id) REFERENCES consultation(consultation_id)
 );
+
+CREATE TABLE users (
+    user_id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(100) NOT NULL UNIQUE,
+    email VARCHAR(150) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    role ENUM('ADMIN', 'DOCTOR') NOT NULL DEFAULT 'DOCTOR',
+    doctor_id INT UNIQUE,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (doctor_id)
+        REFERENCES doctor(doctor_id)
+);
