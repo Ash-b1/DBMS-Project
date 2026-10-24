@@ -20,14 +20,16 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/auth/login`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ login, password })
-        }
-      );
+      const apiUrl =
+        process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+
+      const response = await fetch(`${apiUrl}/api/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ login: login.trim(), password })
+      });
 
       const data = await response.json();
 
@@ -49,9 +51,9 @@ export default function LoginPage() {
       sessionStorage.setItem('user', JSON.stringify(data.user));
 
       if (data.user.role === 'ADMIN') {
-        router.push('/admin');
+        router.push('/admin/dashboard');
       } else {
-        router.push('/doctor');
+        router.push('/doctor/dashboard');
       }
     } catch {
       setError('Unable to connect to the server. Please try again.');
@@ -64,9 +66,11 @@ export default function LoginPage() {
     <main className={styles.container}>
       <section className={styles.card}>
         <div className={styles.logo}>+</div>
+
         <p className={styles.brand}>CLINICAL DECISION SUPPORT</p>
 
         <h1>Welcome back</h1>
+
         <p className={styles.subtitle}>
           Sign in to access your clinical workspace.
         </p>
@@ -106,7 +110,7 @@ export default function LoginPage() {
         </form>
 
         <p className={styles.footer}>
-          Don't have an account? <Link href="/register">Register</Link>
+          Administrator? <Link href="/register">Register an admin account</Link>
         </p>
 
         <p className={styles.footer}>

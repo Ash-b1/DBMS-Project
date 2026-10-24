@@ -4,184 +4,188 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px;
-  background: #f3f6f8;
+  padding: 32px 16px;
+  background: #f2f7fb;
   font-family: Arial, Helvetica, sans-serif;
 }
 
 .card {
   width: 100%;
-  max-width: 480px;
-  padding: 44px 40px;
+  max-width: 440px;
+  padding: 40px;
   background: #ffffff;
-  border: 1px solid #e1e7eb;
+  border: 1px solid #e1eaf0;
   border-radius: 18px;
-  box-shadow: 0 12px 35px rgba(25, 50, 65, 0.08);
-  text-align: center;
+  box-shadow: 0 12px 40px rgba(25, 65, 95, 0.08);
 }
 
 .logo {
-  width: 54px;
-  height: 54px;
+  width: 48px;
+  height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
   margin: 0 auto 18px;
-  border-radius: 15px;
-  background: #176b66;
-  color: #ffffff;
-  font-size: 38px;
+  border-radius: 14px;
+  background: #e5f2ff;
+  color: #1769aa;
+  font-size: 32px;
+  font-weight: 700;
 }
 
 .brand {
-  margin: 0 0 24px;
-  color: #31596b;
+  margin: 0 0 14px;
+  color: #1769aa;
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: 1.4px;
+  letter-spacing: 2px;
+  text-align: center;
 }
 
 .card h1 {
   margin: 0 0 14px;
-  color: #172c3a;
-  font-size: 31px;
-  line-height: 1.3;
+  color: #17364d;
+  font-size: 29px;
+  line-height: 1.25;
+  text-align: center;
 }
 
 .subtitle {
-  margin: 0 auto 30px;
-  max-width: 340px;
-  color: #647582;
+  margin: 0 0 28px;
+  color: #64798a;
   font-size: 14px;
   line-height: 1.7;
+  text-align: center;
 }
 
 .actions {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  margin-top: 28px;
 }
 
 .primaryButton,
 .secondaryButton {
   display: block;
-  padding: 14px;
-  border: 1px solid #176b66;
-  border-radius: 8px;
+  padding: 13px 18px;
+  border-radius: 9px;
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
+  text-align: center;
   text-decoration: none;
-  transition: background 0.2s, color 0.2s;
+  transition: background 0.2s ease;
 }
 
 .primaryButton {
-  background: #176b66;
+  background: #1769aa;
   color: #ffffff;
 }
 
 .primaryButton:hover {
-  background: #105650;
+  background: #10568f;
 }
 
 .secondaryButton {
+  border: 1px solid #cbdce8;
   background: #ffffff;
-  color: #176b66;
+  color: #1769aa;
 }
 
 .secondaryButton:hover {
-  background: #eef7f6;
-}
-
-.footer {
-  margin: 28px 0 0;
-  padding-top: 18px;
-  border-top: 1px solid #edf0f2;
-  color: #74838d;
-  font-size: 12px;
-}
-
-@media (max-width: 480px) {
-  .card {
-    padding: 32px 22px;
-  }
-
-  .card h1 {
-    font-size: 27px;
-  }
+  background: #f3f8fc;
 }
 
 .form {
   display: flex;
   flex-direction: column;
-  text-align: left;
+  gap: 10px;
 }
 
 .form label {
-  margin: 0 0 8px;
-  color: #263e4b;
+  margin-top: 6px;
+  color: #29485e;
   font-size: 13px;
   font-weight: 600;
 }
 
 .form input {
   width: 100%;
-  margin-bottom: 20px;
-  padding: 13px 14px;
-  border: 1px solid #d3dde2;
+  box-sizing: border-box;
+  padding: 12px 13px;
+  border: 1px solid #cedce6;
   border-radius: 8px;
-  outline: none;
   background: #ffffff;
-  color: #172c3a;
+  color: #17364d;
+  font: inherit;
   font-size: 14px;
+  outline: none;
 }
 
 .form input:focus {
-  border-color: #176b66;
-  box-shadow: 0 0 0 3px rgba(23, 107, 102, 0.12);
+  border-color: #3987c8;
+  box-shadow: 0 0 0 3px rgba(57, 135, 200, 0.13);
 }
 
 .form button {
-  margin-top: 4px;
-  padding: 14px;
+  margin-top: 14px;
+  padding: 13px 16px;
   border: none;
-  border-radius: 8px;
-  background: #176b66;
+  border-radius: 9px;
+  background: #1769aa;
   color: #ffffff;
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
   cursor: pointer;
 }
 
 .form button:hover {
-  background: #105650;
+  background: #10568f;
 }
 
 .form button:disabled {
+  background: #91b6d3;
   cursor: not-allowed;
-  opacity: 0.65;
 }
 
-.error,
-.success {
-  margin: 0 0 16px;
+.error {
+  margin: 8px 0;
+  color: #b42318;
   font-size: 13px;
   line-height: 1.5;
 }
 
-.error {
-  color: #b42318;
+.success {
+  margin: 8px 0;
+  color: #167344;
+  font-size: 13px;
+  line-height: 1.5;
 }
 
-.success {
-  color: #167347;
+.footer {
+  margin: 22px 0 0;
+  color: #718392;
+  font-size: 12px;
+  line-height: 1.6;
+  text-align: center;
 }
 
 .footer a {
-  color: #176b66;
+  color: #1769aa;
   font-weight: 600;
   text-decoration: none;
 }
 
 .footer a:hover {
   text-decoration: underline;
+}
+
+@media (max-width: 480px) {
+  .card {
+    padding: 28px 22px;
+  }
+
+  .card h1 {
+    font-size: 25px;
+  }
 }

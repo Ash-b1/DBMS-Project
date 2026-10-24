@@ -10,6 +10,7 @@ export default function RegisterPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [registrationSecret, setRegistrationSecret] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
@@ -24,32 +25,53 @@ export default function RegisterPage() {
       return;
     }
 
+    if (password.length < 12) {
+      setError('Password must contain at least 12 characters.');
+      return;
+    }
+
     setLoading(true);
 
     try {
+      const apiUrl =
+        process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/auth/register`,
+        `${apiUrl}/api/admin-auth/register`,
         {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, email, password })
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            username: username.trim(),
+            email: email.trim().toLowerCase(),
+            password,
+            registrationSecret
+          })
         }
       );
 
       const data = await response.json();
 
       if (!response.ok) {
-        setError(data.message || 'Registration failed.');
+        setError(data.message || 'Admin registration failed.');
         return;
       }
 
-      setSuccess('Registration successful! You can now log in.');
+      setSuccess(
+        'Admin account created successfully. You can now log in.'
+      );
+
       setUsername('');
       setEmail('');
       setPassword('');
       setConfirmPassword('');
+      setRegistrationSecret('');
     } catch {
-      setError('Unable to connect to the server. Please try again.');
+      setError(
+        'Unable to connect to the server. Check that the backend is running.'
+      );
     } finally {
       setLoading(false);
     }
@@ -59,11 +81,14 @@ export default function RegisterPage() {
     <main className={styles.container}>
       <section className={styles.card}>
         <div className={styles.logo}>+</div>
+
         <p className={styles.brand}>CLINICAL DECISION SUPPORT</p>
 
-        <h1>Create an account</h1>
+        <h1>Admin registration</h1>
+
         <p className={styles.subtitle}>
-          Register for a doctor account to get started.
+          Create an administrator account to manage the system and register
+          doctors.
         </p>
 
         <form onSubmit={handleSubmit} className={styles.form}>
@@ -73,12 +98,9 @@ export default function RegisterPage() {
             type="text"
             value={username}
             onChange={(event) => setUsername(event.target.value)}
-            placeholder="Choose a username"
+            placeholder="Choose an admin username"
             autoComplete="username"
-            minLength={3}
             maxLength={100}
-            pattern="[a-zA-Z0-9_]+"
-            title="Use letters, numbers and underscores only."
             required
           />
 
@@ -88,7 +110,7 @@ export default function RegisterPage() {
             type="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
-            placeholder="you@example.com"
+            placeholder="admin@example.com"
             autoComplete="email"
             maxLength={150}
             required
@@ -100,9 +122,10 @@ export default function RegisterPage() {
             type="password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            placeholder="At least 8 characters"
+            placeholder="At least 12 characters"
             autoComplete="new-password"
-            minLength={8}
+            minLength={12}
+            maxLength={72}
             required
           />
 
@@ -114,7 +137,23 @@ export default function RegisterPage() {
             onChange={(event) => setConfirmPassword(event.target.value)}
             placeholder="Enter your password again"
             autoComplete="new-password"
-            minLength={8}
+            minLength={12}
+            maxLength={72}
+            required
+          />
+
+          <label htmlFor="registrationSecret">
+            Admin registration secret
+          </label>
+          <input
+            id="registrationSecret"
+            type="password"
+            value={registrationSecret}
+            onChange={(event) =>
+              setRegistrationSecret(event.target.value)
+            }
+            placeholder="Enter the registration secret"
+            autoComplete="off"
             required
           />
 
@@ -131,12 +170,12 @@ export default function RegisterPage() {
           )}
 
           <button type="submit" disabled={loading}>
-            {loading ? 'Creating account...' : 'Register'}
+            {loading ? 'Creating account...' : 'Create admin account'}
           </button>
         </form>
 
         <p className={styles.footer}>
-          Already registered? <Link href="/login">Log in</Link>
+          Already have an account? <Link href="/login">Log in</Link>
         </p>
 
         <p className={styles.footer}>

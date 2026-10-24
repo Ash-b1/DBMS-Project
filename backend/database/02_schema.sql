@@ -8,7 +8,7 @@ CREATE TABLE department (
 );
 
 CREATE TABLE doctor (
-    doctor_id INT PRIMARY KEY,
+    doctor_id INT  NOT NULL AUTO_INCREMENT PRIMARY KEY,
     department_id INT NOT NULL,
     doctor_name VARCHAR(100) NOT NULL,
     specialization VARCHAR(100),
@@ -17,7 +17,7 @@ CREATE TABLE doctor (
 );
 
 CREATE TABLE patient (
-    patient_id INT PRIMARY KEY,
+    patient_id INT  NOT NULL AUTO_INCREMENT PRIMARY KEY,
     patient_name VARCHAR(100) NOT NULL,
     dob DATE,
     gender VARCHAR(20),

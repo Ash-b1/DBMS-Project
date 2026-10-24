@@ -1,89 +1,8 @@
-
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const pool = require('../db');
 
 const router = express.Router();
-
-router.post('/register', async (req, res) => {
-  try {
-    const { username, email, password } = req.body || {};
-
-    if (
-      typeof username !== 'string' ||
-      typeof email !== 'string' ||
-      typeof password !== 'string'
-    ) {
-      return res.status(400).json({
-        message: 'Username, email and password are required.'
-      });
-    }
-
-    const cleanUsername = username.trim();
-    const cleanEmail = email.trim().toLowerCase();
-
-    if (
-      cleanUsername.length < 3 ||
-      cleanUsername.length > 100 ||
-      !/^[a-zA-Z0-9_]+$/.test(cleanUsername)
-    ) {
-      return res.status(400).json({
-        message: 'Username must be 3-100 characters and contain only letters, numbers or underscores.'
-      });
-    }
-
-    if (
-      cleanEmail.length > 150 ||
-      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)
-    ) {
-      return res.status(400).json({
-        message: 'Enter a valid email address.'
-      });
-    }
-
-    if (
-      password.length < 8 ||
-      Buffer.byteLength(password, 'utf8') > 72
-    ) {
-      return res.status(400).json({
-        message: 'Password must be at least 8 characters and no more than 72 UTF-8 bytes.'
-      });
-    }
-
-    // Hash the password before saving it.
-    const passwordHash = await bcrypt.hash(password, 12);
-
-    // The role is deliberately omitted.
-    // MySQL assigns DOCTOR by default.
-    const [result] = await pool.execute(
-      `INSERT INTO users (username, email, password_hash)
-       VALUES (?, ?, ?)`,
-      [cleanUsername, cleanEmail, passwordHash]
-    );
-
-    return res.status(201).json({
-      message: 'Registration successful.',
-      user: {
-        userId: result.insertId,
-        username: cleanUsername,
-        email: cleanEmail,
-        role: 'DOCTOR'
-      }
-    });
-  } catch (error) {
-    if (error.code === 'ER_DUP_ENTRY') {
-      return res.status(409).json({
-        message: 'Username or email is already registered.'
-      });
-    }
-
-    console.error('Registration error:', error.code || 'UNKNOWN');
-
-    return res.status(500).json({
-      message: 'Unable to complete registration.'
-    });
-  }
-});
 
 router.post('/login', async (req, res) => {
   try {
