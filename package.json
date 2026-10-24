@@ -1,0 +1,14 @@
+{
+  "name": "clinical-decision-support",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Clinical Decision Support & Patient Case Retrieval System",
+  "scripts": {
+    "test-connection": "node scripts/test-connection.js",
+    "db:setup": "node scripts/setup-database.js"
+  },
+  "dependencies": {
+    "dotenv": "^18.0.9",
+    "mysql2": "^3.24.6"
+  }
+}
