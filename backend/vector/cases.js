@@ -30,6 +30,7 @@ async function loadCaseRows() {
          FROM lab_result l WHERE l.consultation_id = c.consultation_id) AS labs
     FROM consultation c
     JOIN patient p ON p.patient_id = c.patient_id
+    WHERE p.is_active = TRUE
   `);
   return rows;
 }
@@ -48,8 +49,20 @@ function describeCase(r) {
 
 async function indexAllCases() {
   const collection = await getCollection();
+
+  // Load the complete eligible dataset before changing the index.
   const rows = (await loadCaseRows()).filter((r) => describeCase(r));
+
+  // Avoid accidental deletion if there are no eligible records.
+  if (rows.length === 0) {
+    console.log('No eligible cases found; existing Chroma index left unchanged.');
+    return 0;
+  }
+
   const BATCH = 100;
+  const validIds = new Set(rows.map((r) => String(r.consultation_id)));
+
+  // Add new records and refresh existing records first.
   for (let i = 0; i < rows.length; i += BATCH) {
     const batch = rows.slice(i, i + BATCH);
     await collection.upsert({
@@ -62,6 +75,30 @@ async function indexAllCases() {
       }))
     });
   }
+
+  // Remove stale IDs only after all upserts succeed.
+const existingIds = [];
+const PAGE_SIZE = 500;
+
+for (let offset = 0; ; offset += PAGE_SIZE) {
+  const page = await collection.get({
+    limit: PAGE_SIZE,
+    offset,
+    include: ['metadatas']
+  });
+
+  existingIds.push(...page.ids);
+
+  if (page.ids.length < PAGE_SIZE) break;
+}
+
+const staleIds = existingIds.filter((id) => !validIds.has(id));
+
+  for (let i = 0; i < staleIds.length; i += BATCH) {
+    await collection.delete({ ids: staleIds.slice(i, i + BATCH) });
+  }
+
+  console.log(`Removed ${staleIds.length} stale vectors.`);
   return rows.length;
 }
 
