@@ -17,7 +17,7 @@ async function main() {
 
     await connection.query(`DROP DATABASE IF EXISTS \`${dbName}\``);
 
-    const files = ['01_create_database.sql', '02_schema.sql', '03_seed.sql'];
+    const files = ['01_create_database.sql', '02_schema.sql', '03_seed.sql','04_concepts.sql'];
     for (const file of files) {
       const sql = fs.readFileSync(path.join(__dirname, '..', 'database', file), 'utf8');
       await connection.query(sql);
