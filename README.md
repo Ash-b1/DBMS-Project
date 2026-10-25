@@ -1,36 +1,118 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Clinical Decision Support & Patient Case Retrieval System
 
-## Getting Started
+An encounter-centric clinical database system for managing structured patient records, viewing doctor dashboard analytics, and retrieving similar historical clinical cases using vector similarity search.
 
-First, run the development server:
+## Technology Stack
+
+- **Frontend:** Next.js, React
+- **Backend:** Node.js, Express
+- **Relational database:** MySQL
+- **Vector database:** Chroma
+- **Authentication:** JWT
+
+## Project Structure
+
+```text
+DBMS-Project/
+├── backend/
+│   ├── routes/
+│   ├── vector/
+│   ├── db.js
+│   ├── server.js
+│   ├── package.json
+│   └── .env.example
+└── frontend/
+    ├── app/
+    └── package.json
+```
+
+## Prerequisites
+
+Install the following before running the application:
+
+- Node.js and npm
+- MySQL Server
+- A running Chroma instance configured for the backend
+
+## Setup
+
+### 1. Configure the backend
+
+Open a terminal in the project directory:
+
+```bash
+cd backend
+npm install
+```
+
+Create a local environment file from the example:
+
+```bash
+cp .env.example .env
+```
+
+Edit `backend/.env` and configure your MySQL connection, JWT secret, admin registration secret, and any account-related settings required by your backend.
+
+**Do not commit `.env` or share its secrets.** Use placeholder values in `.env.example`.
+
+### 2. Configure MySQL
+
+Create the project database if it does not already exist:
+
+```sql
+CREATE DATABASE clinical_decision_support;
+```
+
+Configure the credentials in `backend/.env` and run the project's database setup procedure if required by your current schema.
+
+### 3. Start the backend
+
+From the `backend` directory:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The backend is expected to run on port `5000` with the default local configuration.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 4. Start the frontend
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Open a second terminal:
 
-## Learn More
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
-To learn more about Next.js, take a look at the following resources:
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Main Features
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- Doctor dashboard with clinical analytics.
+- Clinical case retrieval using Chroma vector similarity search.
+- Structured clinical data stored in MySQL.
+- Backend API endpoints for analytics and clinical case retrieval.
 
-## Deploy on Vercel
+## Environment Configuration
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+See `backend/.env.example` for the environment-variable names expected by the backend. Configure local values in `backend/.env`.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Ensure the frontend's API URL matches the backend address and that Chroma is reachable using the configuration expected by the vector-search implementation.
+
+## Development Checks
+
+Run the frontend production build from the `frontend` directory:
+
+```bash
+npm run build
+```
+
+Run the backend using the scripts defined in `backend/package.json`.
+
+## Important Notes
+
+- Use synthetic or appropriately anonymized patient data during development.
+- Do not commit passwords, tokens, or other secrets.
+- Verify database configuration and clinical case retrieval before deployment.
+- This project is for academic development and is not a substitute for professional medical judgment.
