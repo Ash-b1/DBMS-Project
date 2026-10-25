@@ -77,7 +77,7 @@ async function fetchCaseDetails(ids) {
        JOIN patient p ON p.patient_id = c.patient_id
        JOIN doctor d ON d.doctor_id = c.doctor_id
        JOIN department dep ON dep.department_id = d.department_id
-      WHERE c.consultation_id IN (?)`, [ids]);
+      WHERE c.consultation_id IN (?) AND p.is_active = TRUE`, [ids]);
   const [diagnoses] = await pool.query(
     `SELECT consultation_id, diagnosis_code, diagnosis_name, diagnosis_type, confidence_score
        FROM diagnosis WHERE consultation_id IN (?)`, [ids]);
