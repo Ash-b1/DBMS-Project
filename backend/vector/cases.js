@@ -76,31 +76,29 @@ async function indexAllCases() {
     });
   }
 
+
   // Remove stale IDs only after all upserts succeed.
-const existingIds = [];
-const PAGE_SIZE = 500;
+  const existingIds = [];
+  const PAGE_SIZE = 500;
 
-for (let offset = 0; ; offset += PAGE_SIZE) {
-  const page = await collection.get({
-    limit: PAGE_SIZE,
-    offset,
-    include: ['metadatas']
-  });
+  for (let offset = 0; ; offset += PAGE_SIZE) {
+    const page = await collection.get({
+      limit: PAGE_SIZE,
+      offset,
+      include: ['metadatas']
+    });
 
-  existingIds.push(...page.ids);
+    existingIds.push(...page.ids);
 
-  if (page.ids.length < PAGE_SIZE) break;
-}
+    if (page.ids.length < PAGE_SIZE) break;
+  }
 
-const staleIds = existingIds.filter((id) => !validIds.has(id));
+  const staleIds = existingIds.filter((id) => !validIds.has(id));
 
   for (let i = 0; i < staleIds.length; i += BATCH) {
     await collection.delete({ ids: staleIds.slice(i, i + BATCH) });
   }
 
-  console.log(`Removed ${staleIds.length} stale vectors.`);
-  return rows.length;
-}
 
 // Full relational details for a list of consultation ids.
 async function fetchCaseDetails(ids) {
