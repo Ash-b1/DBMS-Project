@@ -93,15 +93,20 @@ async function indexAllCases() {
     if (page.ids.length < PAGE_SIZE) break;
   }
 
+
   const staleIds = existingIds.filter((id) => !validIds.has(id));
 
   for (let i = 0; i < staleIds.length; i += BATCH) {
     await collection.delete({ ids: staleIds.slice(i, i + BATCH) });
   }
 
+  console.log(`Removed ${staleIds.length} stale vectors.`);
+  return rows.length;
+}
 
 // Full relational details for a list of consultation ids.
 async function fetchCaseDetails(ids) {
+
   const [cases] = await pool.query(
     `SELECT c.consultation_id, DATE_FORMAT(c.consultation_date, '%Y-%m-%d') AS consultation_date,
             c.consultation_type, c.chief_complaint, c.status,
