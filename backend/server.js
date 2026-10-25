@@ -6,6 +6,8 @@ const authRoutes = require('./routes/auth');
 const protectedRoutes = require('./routes/protected');
 const adminRoutes = require('./routes/admin');
 const adminAuthRoutes = require('./routes/adminAuth');
+const doctorClinicalRoutes = require('./routes/doctorClinical');
+const adminClinicalRoutes = require('./routes/adminClinical');
 
 const app = express();
 
@@ -23,6 +25,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/protected', protectedRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/admin-auth', adminAuthRoutes);
+app.use('/api/doctors', doctorClinicalRoutes);
+app.use('/api/admin-clinical', adminClinicalRoutes);
 
 const PORT = Number(process.env.PORT || 5000);
 

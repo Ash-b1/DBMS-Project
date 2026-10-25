@@ -23,11 +23,12 @@ CREATE TABLE patient (
     gender VARCHAR(20),
     blood_group VARCHAR(5),
     phone VARCHAR(20),
-    email VARCHAR(100)
+    email VARCHAR(100),
+    is_active BOOLEAN NOT NULL DEFAULT TRUE
 );
 
 CREATE TABLE allergy (
-    allergy_id INT PRIMARY KEY,
+    allergy_id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
     patient_id INT NOT NULL,
     allergen VARCHAR(100) NOT NULL,
     reaction VARCHAR(100),
@@ -36,7 +37,7 @@ CREATE TABLE allergy (
 );
 
 CREATE TABLE consultation (
-    consultation_id INT PRIMARY KEY,
+    consultation_id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
     patient_id INT NOT NULL,
     doctor_id INT NOT NULL,
     consultation_date DATE NOT NULL,
@@ -56,7 +57,7 @@ CREATE TABLE medication (
 );
 
 CREATE TABLE lab_result (
-    lab_id INT PRIMARY KEY,
+    lab_id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
     consultation_id INT NOT NULL,
     test_name VARCHAR(100) NOT NULL,
     test_value VARCHAR(50),
@@ -67,7 +68,7 @@ CREATE TABLE lab_result (
 );
 
 CREATE TABLE diagnosis (
-    diagnosis_id INT PRIMARY KEY,
+    diagnosis_id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
     consultation_id INT NOT NULL,
     diagnosis_code VARCHAR(20),
     diagnosis_name VARCHAR(150) NOT NULL,
@@ -100,7 +101,7 @@ CREATE TABLE treatment_medication (
 );
 
 CREATE TABLE outcome (
-    outcome_id INT PRIMARY KEY,
+    outcome_id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
     consultation_id INT NOT NULL UNIQUE,
     outcome_status VARCHAR(50),
     follow_up_required BOOLEAN,
