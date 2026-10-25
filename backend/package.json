@@ -11,7 +11,8 @@
     "vector:index": "node scripts/index-cases.js",
     "vector:search": "node scripts/search-cases.js",
     "vector:seed": "node scripts/seed-vector-cases.js",
-    "vector:test": "node scripts/test-vector-relevance.js"
+    "vector:test": "node scripts/test-vector-relevance.js",
+    "mongo:test": "node scripts/test-mongodb.js"
   },
   "dependencies": {
     "@chroma-core/default-embed": "^0.1.9",
