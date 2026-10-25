@@ -271,11 +271,15 @@ function ConsultationSectionContent() {
     }
   }
 
-  useEffect(() => {
-    loadSection();
-    // Load data when the selected consultation section changes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [doctorId, patientId, consultationId, section, router]);
+useEffect(() => {
+  const timeoutId = setTimeout(() => {
+    void loadSection();
+  }, 0);
+
+  return () => clearTimeout(timeoutId);
+  // Load data when the selected consultation section changes.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [doctorId, patientId, consultationId, section, router]);
 
   function openAddForm() {
     setEditingRecord(null);

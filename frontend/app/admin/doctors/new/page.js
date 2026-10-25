@@ -113,11 +113,11 @@ export default function RegisterDoctorPage() {
         <h1>Register a Doctor</h1>
 
         <p className={styles.subtitle}>
-          Create a doctor's clinical record and login credentials.
+          Create a doctor&apos;s clinical record and login credentials.
         </p>
 
         <form onSubmit={handleSubmit} className={styles.form}>
-          <label htmlFor="doctorName">Doctor's full name</label>
+          <label htmlFor="doctorName">Doctor&apos;s full name</label>
           <input
             id="doctorName"
             type="text"
