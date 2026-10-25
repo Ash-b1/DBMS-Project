@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
@@ -17,6 +18,76 @@ const emptyPatientForm = {
   chief_complaint: ''
 };
 
+// Safely convert diagnosis objects into readable text.
+function formatDiagnosis(diagnosis) {
+  if (diagnosis == null) return '';
+
+  if (typeof diagnosis === 'string' || typeof diagnosis === 'number') {
+    return String(diagnosis);
+  }
+
+  if (Array.isArray(diagnosis)) {
+    return diagnosis.map(formatDiagnosis).filter(Boolean).join(', ');
+  }
+
+  if (typeof diagnosis === 'object') {
+    const name =
+      diagnosis.diagnosis_name || diagnosis.diagnosis_code || '';
+
+    const details = [
+      diagnosis.diagnosis_code &&
+      diagnosis.diagnosis_name &&
+      diagnosis.diagnosis_code !== diagnosis.diagnosis_name
+        ? `Code: ${diagnosis.diagnosis_code}`
+        : null,
+      diagnosis.diagnosis_type
+        ? `Type: ${diagnosis.diagnosis_type}`
+        : null,
+      diagnosis.confidence_score != null
+        ? `Confidence: ${diagnosis.confidence_score}`
+        : null
+    ].filter(Boolean);
+
+    return [name, ...details].filter(Boolean).join(' — ') ||
+      'Diagnosis details unavailable';
+  }
+
+  return '';
+}
+
+// Safely convert lab-result objects into readable text.
+function formatLab(lab) {
+  if (lab == null) return '';
+
+  if (typeof lab === 'string' || typeof lab === 'number') {
+    return String(lab);
+  }
+
+  if (Array.isArray(lab)) {
+    return lab.map(formatLab).filter(Boolean).join('; ');
+  }
+
+  if (typeof lab === 'object') {
+    const value =
+      lab.test_value != null
+        ? `${lab.test_value}${lab.unit ? ` ${lab.unit}` : ''}`
+        : null;
+
+    return [
+      lab.test_name || 'Lab test',
+      value,
+      lab.result_status ? `Status: ${lab.result_status}` : null,
+      lab.reference_range
+        ? `Reference range: ${lab.reference_range}`
+        : null
+    ]
+      .filter(Boolean)
+      .join(' — ');
+  }
+
+  return '';
+}
+
 export default function DoctorDashboard() {
   const router = useRouter();
 
@@ -32,49 +103,79 @@ export default function DoctorDashboard() {
   const [formError, setFormError] = useState('');
   const [saving, setSaving] = useState(false);
 
-  
-async function handleDeletePatient(patient) {
-  const confirmed = window.confirm(
-    `Remove ${patient.patient_name} from the active patient list?\n\nTheir medical history will be preserved.`
-  );
+  // Chroma vector similarity search
+  const [caseQuery, setCaseQuery] = useState('');
+  const [caseResults, setCaseResults] = useState([]);
+  const [caseSearchLoading, setCaseSearchLoading] = useState(false);
+  const [caseSearchError, setCaseSearchError] = useState('');
+  const [caseSearchDone, setCaseSearchDone] = useState(false);
 
-  if (!confirmed) return;
+  // MongoDB NoSQL analytics
+  const [analytics, setAnalytics] = useState(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(true);
+  const [analyticsError, setAnalyticsError] = useState('');
 
-  try {
-    const token = sessionStorage.getItem('token');
+  const searchClinicalCases = async (event) => {
+    event.preventDefault();
 
-    const response = await fetch(
-      `${API_URL}/api/doctors/${doctorId}/patients/${patient.patient_id}`,
-      {
-        method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      }
-    );
+    const query = caseQuery.trim();
 
-    const data = await response.json();
-
-    if (response.status === 401 || response.status === 403) {
-      sessionStorage.removeItem('token');
-      sessionStorage.removeItem('user');
-      router.push('/login');
+    if (query.length < 3 || query.length > 500) {
+      setCaseSearchError(
+        'Enter a search query between 3 and 500 characters.'
+      );
+      setCaseResults([]);
+      setCaseSearchDone(false);
       return;
     }
 
-    if (!response.ok) {
-      throw new Error(data.message || 'Failed to remove patient.');
+    setCaseSearchLoading(true);
+    setCaseSearchError('');
+    setCaseSearchDone(false);
+    setCaseResults([]);
+
+    try {
+      const token = sessionStorage.getItem('token');
+
+      if (!token) {
+        setCaseSearchError(
+          'Your session has expired. Please log in again.'
+        );
+        return;
+      }
+
+      const response = await fetch(`${API_URL}/api/cases/search`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          query,
+          limit: 5
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.message || 'Clinical case search failed.'
+        );
+      }
+
+      setCaseResults(
+        Array.isArray(data.cases) ? data.cases : []
+      );
+      setCaseSearchDone(true);
+    } catch (err) {
+      setCaseSearchError(
+        err.message || 'Unable to search clinical cases.'
+      );
+    } finally {
+      setCaseSearchLoading(false);
     }
-
-    // Reload the patient list after successful deletion.
-    await loadPatients();
-
-  } catch (err) {
-    setError(err.message || 'Failed to remove patient.');
-  }
-}
-
-
+  };
 
   const loadPatients = useCallback(async () => {
     setLoading(true);
@@ -133,10 +234,12 @@ async function handleDeletePatient(patient) {
       }
 
       if (!response.ok) {
-        throw new Error(data.message || 'Could not load patients.');
+        throw new Error(
+          data.message || 'Could not load patients.'
+        );
       }
 
-      // Keep one card per patient, showing their latest consultation.
+      // Keep one card per patient, showing the latest consultation.
       const patientMap = new Map();
 
       for (const row of data.patients || []) {
@@ -162,7 +265,9 @@ async function handleDeletePatient(patient) {
 
       setPatients(Array.from(patientMap.values()));
     } catch (err) {
-      setError(err.message || 'Unable to connect to the server.');
+      setError(
+        err.message || 'Unable to connect to the server.'
+      );
     } finally {
       setLoading(false);
     }
@@ -172,10 +277,110 @@ async function handleDeletePatient(patient) {
     loadPatients();
   }, [loadPatients]);
 
+  // Load aggregated statistics from the MongoDB analytics API.
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadAnalytics() {
+      setAnalyticsLoading(true);
+      setAnalyticsError('');
+
+      try {
+        const token = sessionStorage.getItem('token');
+
+        if (!token) {
+          throw new Error(
+            'Please log in to view analytics.'
+          );
+        }
+
+        const response = await fetch(
+          `${API_URL}/api/analytics`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            data.message || 'Unable to load analytics.'
+          );
+        }
+
+        if (!cancelled) {
+          setAnalytics(data);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setAnalyticsError(
+            err.message || 'Unable to load analytics.'
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setAnalyticsLoading(false);
+        }
+      }
+    }
+
+    loadAnalytics();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   function logout() {
     sessionStorage.removeItem('token');
     sessionStorage.removeItem('user');
     router.replace('/login');
+  }
+
+  async function handleDeletePatient(patient) {
+    const confirmed = window.confirm(
+      `Remove ${patient.patient_name} from the active patient list?\n\nTheir medical history will be preserved.`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      const token = sessionStorage.getItem('token');
+
+      const response = await fetch(
+        `${API_URL}/api/doctors/${doctorId}/patients/${patient.patient_id}`,
+        {
+          method: 'DELETE',
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+
+      const data = await response.json();
+
+      if (response.status === 401 || response.status === 403) {
+        sessionStorage.removeItem('token');
+        sessionStorage.removeItem('user');
+        router.push('/login');
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(
+          data.message || 'Failed to remove patient.'
+        );
+      }
+
+      await loadPatients();
+    } catch (err) {
+      setError(
+        err.message || 'Failed to remove patient.'
+      );
+    }
   }
 
   function startAddPatient() {
@@ -248,9 +453,9 @@ async function handleDeletePatient(patient) {
         email: formData.email.trim() || null
       };
 
-      // The create endpoint also creates the initial consultation.
       if (!isEditing) {
-        payload.consultation_type = formData.consultation_type;
+        payload.consultation_type =
+          formData.consultation_type;
         payload.chief_complaint =
           formData.chief_complaint.trim() ||
           'Initial patient registration';
@@ -364,7 +569,9 @@ async function handleDeletePatient(patient) {
             CLINICAL DECISION SUPPORT
           </p>
 
-          <h1 style={{ margin: 0 }}>Doctor Dashboard</h1>
+          <h1 style={{ margin: 0 }}>
+            Doctor Dashboard
+          </h1>
 
           <p style={{ color: '#526078' }}>
             Welcome, {doctorName}. Your patient list is below.
@@ -395,6 +602,312 @@ async function handleDeletePatient(patient) {
 
       {!loading && !error && (
         <>
+          {/* CARD 1: MongoDB NoSQL aggregation */}
+          <section
+            style={{
+              ...cardStyle,
+              marginBottom: '28px',
+              borderTop: '4px solid #0891b2'
+            }}
+          >
+            <h2 style={{ marginTop: 0 }}>
+              NoSQL Clinical Analytics
+            </h2>
+
+            <p style={{ color: '#526078' }}>
+              Aggregated clinical statistics powered by MongoDB.
+            </p>
+
+            {analyticsLoading && (
+              <p>Loading analytics...</p>
+            )}
+
+            {analyticsError && (
+              <p role="alert" style={{ color: '#b91c1c' }}>
+                {analyticsError}
+              </p>
+            )}
+
+            {analytics && !analyticsLoading && (
+              <>
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns:
+                      'repeat(auto-fit, minmax(180px, 1fr))',
+                    gap: '16px',
+                    marginBottom: '24px'
+                  }}
+                >
+                  <div
+                    style={{
+                      padding: '18px',
+                      borderRadius: '10px',
+                      background: '#ecfeff'
+                    }}
+                  >
+                    <p style={{ margin: 0, color: '#155e75' }}>
+                      Total consultations
+                    </p>
+                    <h2 style={{ marginBottom: 0 }}>
+                      {analytics.totalConsultations}
+                    </h2>
+                  </div>
+
+                  <div
+                    style={{
+                      padding: '18px',
+                      borderRadius: '10px',
+                      background: '#f5f3ff'
+                    }}
+                  >
+                    <p style={{ margin: 0, color: '#5b21b6' }}>
+                      Diagnosis categories
+                    </p>
+                    <h2 style={{ marginBottom: 0 }}>
+                      {analytics.diagnosisFrequency?.length ?? 0}
+                    </h2>
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns:
+                      'repeat(auto-fit, minmax(220px, 1fr))',
+                    gap: '24px'
+                  }}
+                >
+                  <div>
+                    <h3>Common diagnoses</h3>
+
+                    {analytics.diagnosisFrequency?.length ? (
+                      <ul>
+                        {analytics.diagnosisFrequency.map((item, index) => (
+                          <li key={item.name ?? index}>
+                            {item.name}:{' '}
+                            <strong>{item.count}</strong>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p>No diagnosis data available.</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <h3>Consultation statuses</h3>
+
+                    {analytics.consultationStatuses?.length ? (
+                      <ul>
+                        {analytics.consultationStatuses.map((item, index) => (
+                          <li key={item.name ?? index}>
+                            {item.name}:{' '}
+                            <strong>{item.count}</strong>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p>No consultation status data available.</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <h3>Outcome statuses</h3>
+
+                    {analytics.outcomeStatuses?.length ? (
+                      <ul>
+                        {analytics.outcomeStatuses.map((item, index) => (
+                          <li key={item.name ?? index}>
+                            {item.name}:{' '}
+                            <strong>{item.count}</strong>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p>No outcome data available.</p>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+          </section>
+
+          {/* CARD 2: Chroma vector similarity search */}
+          <section
+            style={{
+              ...cardStyle,
+              marginBottom: '28px',
+              borderTop: '4px solid #7c3aed'
+            }}
+          >
+            <h2 style={{ marginTop: 0 }}>
+              Clinical Case Retrieval
+            </h2>
+
+            <p style={{ color: '#526078' }}>
+              Search historical cases using symptoms, clinical notes,
+              diagnoses, or lab results.
+            </p>
+
+            <form
+              onSubmit={searchClinicalCases}
+              style={{
+                display: 'flex',
+                gap: '12px',
+                flexWrap: 'wrap',
+                alignItems: 'stretch'
+              }}
+            >
+              <input
+                type="text"
+                value={caseQuery}
+                onChange={(event) =>
+                  setCaseQuery(event.target.value)
+                }
+                placeholder="e.g. fever, cough, elevated glucose..."
+                maxLength={500}
+                minLength={3}
+                required
+                aria-label="Clinical case search query"
+                style={{
+                  ...inputStyle,
+                  flex: '1 1 280px'
+                }}
+              />
+
+              <button
+                type="submit"
+                disabled={caseSearchLoading}
+                style={{
+                  ...primaryButtonStyle,
+                  background: '#7c3aed',
+                  borderColor: '#7c3aed',
+                  opacity: caseSearchLoading ? 0.7 : 1
+                }}
+              >
+                {caseSearchLoading
+                  ? 'Searching...'
+                  : 'Search Cases'}
+              </button>
+            </form>
+
+            {caseSearchError && (
+              <p role="alert" style={{ color: '#b91c1c' }}>
+                {caseSearchError}
+              </p>
+            )}
+
+            {caseSearchDone && (
+              <div style={{ marginTop: '24px' }}>
+                <h3>
+                  Similar Historical Cases ({caseResults.length})
+                </h3>
+
+                {caseResults.length === 0 ? (
+                  <p>
+                    No similar cases were found for this query.
+                  </p>
+                ) : (
+                  <div style={{ display: 'grid', gap: '16px' }}>
+                    {caseResults.map((result, index) => (
+                      <article
+                        key={result.consultation_id ?? index}
+                        style={{
+                          border: '1px solid #dfe5ee',
+                          borderRadius: '10px',
+                          padding: '16px',
+                          background: '#fafbff'
+                        }}
+                      >
+                        <h4 style={{ marginTop: 0 }}>
+                          Match #{result.rank ?? index + 1}
+                        </h4>
+
+                        {result.consultation_date && (
+                          <p>
+                            <strong>Consultation date:</strong>{' '}
+                            {String(result.consultation_date)}
+                          </p>
+                        )}
+
+                        {result.chief_complaint && (
+                          <p>
+                            <strong>Chief complaint:</strong>{' '}
+                            {formatDiagnosis(result.chief_complaint)}
+                          </p>
+                        )}
+
+                        {result.diagnoses && (
+                          <div>
+                            <strong>Diagnoses:</strong>
+
+                            {Array.isArray(result.diagnoses) ? (
+                              <ul>
+                                {result.diagnoses.map((diagnosis, diagnosisIndex) => (
+                                  <li key={diagnosis.diagnosis_id ?? diagnosisIndex}>
+                                    {formatDiagnosis(diagnosis)}
+                                  </li>
+                                ))}
+                              </ul>
+                            ) : (
+                              <p>{formatDiagnosis(result.diagnoses)}</p>
+                            )}
+                          </div>
+                        )}
+
+                        {result.labs && (
+                          <div>
+                            <strong>Lab results:</strong>
+
+                            {Array.isArray(result.labs) ? (
+                              <ul>
+                                {result.labs.map((lab, labIndex) => (
+                                  <li key={lab.lab_id ?? labIndex}>
+                                    {formatLab(lab)}
+                                  </li>
+                                ))}
+                              </ul>
+                            ) : (
+                              <p>{formatLab(result.labs)}</p>
+                            )}
+                          </div>
+                        )}
+
+                        {result.matchedText && (
+                          <details>
+                            <summary>
+                              View matching clinical summary
+                            </summary>
+                            <p>
+                              {typeof result.matchedText === 'string'
+                                ? result.matchedText
+                                : JSON.stringify(result.matchedText)}
+                            </p>
+                          </details>
+                        )}
+
+                        {typeof result.distance === 'number' && (
+                          <p
+                            style={{
+                              color: '#526078',
+                              fontSize: '13px'
+                            }}
+                          >
+                            Vector distance:{' '}
+                            {result.distance.toFixed(4)}
+                            {' '}(lower generally means a closer match)
+                          </p>
+                        )}
+                      </article>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </section>
+
+          {/* CARD 3: Patient management */}
           <div
             style={{
               display: 'flex',
@@ -427,7 +940,9 @@ async function handleDeletePatient(patient) {
               }}
             >
               <h2 style={{ marginTop: 0 }}>
-                {editingPatient ? 'Edit Patient Details' : 'Register New Patient'}
+                {editingPatient
+                  ? 'Edit Patient Details'
+                  : 'Register New Patient'}
               </h2>
 
               <p style={{ color: '#526078', fontSize: '14px' }}>
@@ -440,7 +955,8 @@ async function handleDeletePatient(patient) {
                 <div
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                    gridTemplateColumns:
+                      'repeat(auto-fit, minmax(220px, 1fr))',
                     gap: '18px'
                   }}
                 >
@@ -495,13 +1011,14 @@ async function handleDeletePatient(patient) {
                       onChange={handleFormChange}
                     >
                       <option value="">Select blood group</option>
-                      {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map(
-                        (group) => (
-                          <option key={group} value={group}>
-                            {group}
-                          </option>
-                        )
-                      )}
+                      {[
+                        'A+', 'A-', 'B+', 'B-',
+                        'AB+', 'AB-', 'O+', 'O-'
+                      ].map((group) => (
+                        <option key={group} value={group}>
+                          {group}
+                        </option>
+                      ))}
                     </select>
                   </label>
 
@@ -616,15 +1133,17 @@ async function handleDeletePatient(patient) {
           {patients.length === 0 ? (
             <section style={cardStyle}>
               <p style={{ margin: 0 }}>
-                No patients were found for your account. Use
-                {' '}<strong>+ Add Patient</strong> to register your first patient.
+                No patients were found for your account. Use{' '}
+                <strong>+ Add Patient</strong> to register your first
+                patient.
               </p>
             </section>
           ) : (
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                gridTemplateColumns:
+                  'repeat(auto-fit, minmax(280px, 1fr))',
                 gap: '18px',
                 marginTop: '18px'
               }}
@@ -639,7 +1158,8 @@ async function handleDeletePatient(patient) {
                   </h3>
 
                   <p>
-                    <strong>Patient ID:</strong> {patient.patient_id}
+                    <strong>Patient ID:</strong>{' '}
+                    {patient.patient_id}
                   </p>
 
                   <p>
@@ -696,7 +1216,8 @@ async function handleDeletePatient(patient) {
 
                   <p>
                     <strong>Status:</strong>{' '}
-                    {patient.latestConsultation.status || 'Not available'}
+                    {patient.latestConsultation.status ||
+                      'Not available'}
                   </p>
 
                   <div
@@ -714,8 +1235,9 @@ async function handleDeletePatient(patient) {
                     >
                       Edit Patient
                     </button>
-                    
+
                     <button
+                      type="button"
                       onClick={() => handleDeletePatient(patient)}
                       style={{
                         padding: '9px 14px',

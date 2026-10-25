@@ -12,7 +12,9 @@
     "vector:search": "node scripts/search-cases.js",
     "vector:seed": "node scripts/seed-vector-cases.js",
     "vector:test": "node scripts/test-vector-relevance.js",
-    "mongo:test": "node scripts/test-mongodb.js"
+    "mongo:test": "node scripts/test-mongodb.js",
+    "analytics:sync": "node scripts/sync-clinical-analytics.js",
+    "accounts:create": "node scripts/createDoctors.js"
   },
   "dependencies": {
     "@chroma-core/default-embed": "^0.1.9",
