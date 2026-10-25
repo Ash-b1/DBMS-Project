@@ -64,7 +64,10 @@ CREATE TABLE lab_result (
     unit VARCHAR(30),
     reference_range VARCHAR(50),
     result_status VARCHAR(30),
-    FOREIGN KEY (consultation_id) REFERENCES consultation(consultation_id)
+    FOREIGN KEY (consultation_id)
+    REFERENCES consultation(consultation_id)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE
 );
 
 CREATE TABLE diagnosis (
@@ -74,7 +77,10 @@ CREATE TABLE diagnosis (
     diagnosis_name VARCHAR(150) NOT NULL,
     diagnosis_type VARCHAR(50),
     confidence_score DECIMAL(4,2),
-    FOREIGN KEY (consultation_id) REFERENCES consultation(consultation_id)
+    FOREIGN KEY (consultation_id)
+    REFERENCES consultation(consultation_id)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE
 );
 
 CREATE TABLE treatment (
@@ -85,8 +91,11 @@ CREATE TABLE treatment (
     start_date DATE,
     end_date DATE,
     PRIMARY KEY (consultation_id, medication_id),
-    FOREIGN KEY (consultation_id) REFERENCES consultation(consultation_id),
-    FOREIGN KEY (medication_id) REFERENCES medication(medication_id)
+    FOREIGN KEY (medication_id) REFERENCES medication(medication_id),
+    FOREIGN KEY (consultation_id)
+    REFERENCES consultation(consultation_id)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE
 );
 
 CREATE TABLE treatment_medication (
@@ -97,7 +106,9 @@ CREATE TABLE treatment_medication (
     route VARCHAR(50),
     PRIMARY KEY (consultation_id, medication_id),
     FOREIGN KEY (consultation_id, medication_id)
-        REFERENCES treatment(consultation_id, medication_id)
+    REFERENCES treatment(consultation_id, medication_id)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE
 );
 
 CREATE TABLE outcome (
@@ -107,7 +118,10 @@ CREATE TABLE outcome (
     follow_up_required BOOLEAN,
     follow_up_date DATE,
     outcome_notes TEXT,
-    FOREIGN KEY (consultation_id) REFERENCES consultation(consultation_id)
+    FOREIGN KEY (consultation_id)
+    REFERENCES consultation(consultation_id)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE
 );
 
 CREATE TABLE users (
@@ -122,4 +136,13 @@ CREATE TABLE users (
 
     FOREIGN KEY (doctor_id)
         REFERENCES doctor(doctor_id)
+);
+
+CREATE TABLE clinical_audit_log (
+    audit_id INT AUTO_INCREMENT PRIMARY KEY,
+    table_name VARCHAR(100) NOT NULL,
+    action_type VARCHAR(20) NOT NULL,
+    record_key VARCHAR(100) NOT NULL,
+    consultation_id INT,
+    action_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

@@ -25,6 +25,9 @@ function PatientConsultationsContent() {
   const [formData, setFormData] = useState(emptyForm);
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
+  const [deleteError, setDeleteError] = useState("");
+  const [message, setMessage] = useState("");
 
   const loadConsultations = useCallback(async () => {
     const token = sessionStorage.getItem("token");
@@ -106,6 +109,7 @@ function PatientConsultationsContent() {
       consultation_date: new Date().toLocaleDateString("en-CA"),
     });
     setFormError("");
+    setMessage("");
     setShowForm(true);
   }
 
@@ -124,6 +128,7 @@ function PatientConsultationsContent() {
     });
 
     setFormError("");
+    setMessage("");
     setShowForm(true);
   }
 
@@ -132,6 +137,71 @@ function PatientConsultationsContent() {
     setEditingConsultation(null);
     setFormData(emptyForm);
     setFormError("");
+  }
+
+  async function handleDelete(consultation) {
+    if (
+      !window.confirm(
+        `Delete consultation #${consultation.consultation_id}? ` +
+          "This will also delete its lab results, diagnoses, treatments " +
+          "and outcome. This action cannot be undone."
+      )
+    ) {
+      return;
+    }
+
+    const token = sessionStorage.getItem("token");
+
+    if (!token) {
+      router.replace("/login");
+      return;
+    }
+
+    setDeletingId(consultation.consultation_id);
+    setDeleteError("");
+    setMessage("");
+
+    try {
+      const response = await fetch(
+        `${API_URL}/api/doctors/${doctorId}/patients/${patientId}/consultations/${consultation.consultation_id}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const data = await response.json().catch(() => ({}));
+
+      if (response.status === 401 || response.status === 403) {
+        sessionStorage.removeItem("token");
+        sessionStorage.removeItem("user");
+        router.replace("/login");
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(
+          data.message || "Could not delete the consultation."
+        );
+      }
+
+      // Close the form if it was open for the consultation just deleted.
+      if (
+        editingConsultation &&
+        editingConsultation.consultation_id === consultation.consultation_id
+      ) {
+        cancelForm();
+      }
+
+      await loadConsultations();
+      setMessage("Consultation deleted successfully.");
+    } catch (err) {
+      setDeleteError(err.message || "Unable to delete the consultation.");
+    } finally {
+      setDeletingId(null);
+    }
   }
 
   async function handleSubmit(event) {
@@ -227,6 +297,12 @@ function PatientConsultationsContent() {
     whiteSpace: "nowrap",
   };
 
+  const deleteButtonStyle = {
+    ...detailButtonStyle,
+    border: "1px solid #b91c1c",
+    color: "#b91c1c",
+  };
+
   const inputStyle = {
     width: "100%",
     boxSizing: "border-box",
@@ -297,6 +373,18 @@ function PatientConsultationsContent() {
           + Add Consultation
         </button>
       </div>
+
+      {message && (
+        <p role="status" style={{ color: "#166534", fontWeight: "600" }}>
+          {message}
+        </p>
+      )}
+
+      {deleteError && (
+        <p role="alert" style={{ color: "#b91c1c" }}>
+          {deleteError}
+        </p>
+      )}
 
       {showForm && (
         <form
@@ -501,18 +589,38 @@ function PatientConsultationsContent() {
                   </td>
 
                   <td style={cellStyle}>
-                    <button
-                      type="button"
+                    <div
                       style={{
-                        ...detailButtonStyle,
-                        backgroundColor: "#2563eb",
-                        color: "#ffffff",
-                        border: "none",
+                        display: "flex",
+                        flexWrap: "wrap",
+                        gap: "8px",
                       }}
-                      onClick={() => startEditConsultation(consultation)}
                     >
-                      Edit Consultation
-                    </button>
+                      <button
+                        type="button"
+                        style={{
+                          ...detailButtonStyle,
+                          backgroundColor: "#2563eb",
+                          color: "#ffffff",
+                          border: "none",
+                        }}
+                        onClick={() => startEditConsultation(consultation)}
+                        disabled={deletingId !== null}
+                      >
+                        Edit Consultation
+                      </button>
+
+                      <button
+                        type="button"
+                        style={deleteButtonStyle}
+                        onClick={() => handleDelete(consultation)}
+                        disabled={deletingId !== null}
+                      >
+                        {deletingId === consultation.consultation_id
+                          ? "Deleting..."
+                          : "Delete Consultation"}
+                      </button>
+                    </div>
                   </td>
 
                   <td style={cellStyle}>

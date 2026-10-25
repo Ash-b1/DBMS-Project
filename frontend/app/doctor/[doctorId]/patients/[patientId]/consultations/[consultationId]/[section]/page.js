@@ -161,6 +161,8 @@ function ConsultationSectionContent() {
   const [editingRecord, setEditingRecord] = useState(null);
   const [formData, setFormData] = useState({});
   const [medications, setMedications] = useState([]);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
 
   const config = sectionConfig[section];
 
@@ -307,6 +309,73 @@ function ConsultationSectionContent() {
     }));
   }
 
+  async function handleDelete(record) {
+    const itemName =
+      section === 'outcome'
+        ? 'outcome'
+        : section === 'lab-results'
+          ? 'lab result'
+          : section === 'diagnoses'
+            ? 'diagnosis'
+            : 'treatment';
+
+    if (
+      !window.confirm(
+        `Delete this ${itemName}? This action cannot be undone.`
+      )
+    ) {
+      return;
+    }
+
+    setDeleting(true);
+    setDeleteError('');
+    setMessage('');
+    setFormError('');
+
+    const token = sessionStorage.getItem('token');
+
+    // Section names match the backend route segments
+    // (lab-results, diagnoses, treatments, outcome).
+    const baseUrl =
+      `${API_URL}/api/doctors/${doctorId}/patients/${patientId}` +
+      `/consultations/${consultationId}/${section}`;
+
+    const url = config.singleRecord
+      ? baseUrl
+      : `${baseUrl}/${record[config.idKey]}`;
+
+    try {
+      const response = await fetch(url, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (response.status === 401 || response.status === 403) {
+        sessionStorage.removeItem('token');
+        sessionStorage.removeItem('user');
+        router.replace('/login');
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Could not delete the record.');
+      }
+
+      closeForm();
+      setMessage(data.message || 'Record deleted successfully.');
+
+      await loadSection();
+    } catch (err) {
+      setDeleteError(err.message || 'Unable to delete the record.');
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   async function handleSubmit(event) {
     event.preventDefault();
     setSaving(true);
@@ -422,6 +491,13 @@ function ConsultationSectionContent() {
     color: '#ffffff'
   };
 
+  const deleteButtonStyle = {
+    ...buttonStyle,
+    backgroundColor: '#ffffff',
+    border: '1px solid #b91c1c',
+    color: '#b91c1c'
+  };
+
   const inputStyle = {
     width: '100%',
     padding: '10px',
@@ -478,6 +554,12 @@ function ConsultationSectionContent() {
       {message && (
         <p role="status" style={{ color: '#166534', fontWeight: '600' }}>
           {message}
+        </p>
+      )}
+
+      {deleteError && (
+        <p role="alert" style={{ color: '#b91c1c' }}>
+          {deleteError}
         </p>
       )}
 
@@ -794,12 +876,30 @@ function ConsultationSectionContent() {
               </form>
             </section>
           ) : (
-            <div style={{ marginTop: '18px' }}>
+            <div
+              style={{
+                marginTop: '18px',
+                display: 'flex',
+                gap: '10px',
+                flexWrap: 'wrap'
+              }}
+            >
               <button
                 style={buttonStyle}
                 onClick={() => openEditForm(record)}
+                disabled={deleting}
               >
                 Edit {section === 'outcome' ? 'Outcome' : 'Record'}
+              </button>
+
+              <button
+                style={deleteButtonStyle}
+                onClick={() => handleDelete(record)}
+                disabled={deleting}
+              >
+                {deleting
+                  ? 'Deleting...'
+                  : `Delete ${section === 'outcome' ? 'Outcome' : 'Record'}`}
               </button>
             </div>
           )}

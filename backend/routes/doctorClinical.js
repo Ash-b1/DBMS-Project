@@ -1831,4 +1831,312 @@ router.get('/medications', authenticateToken, async (req, res) => {
   }
 });
 
+
+/* =========================================================
+   DELETE ROUTES FOR CONSULTATION AND CLINICAL RECORDS
+   Place these before: module.exports = router;
+   ========================================================= */
+
+// Validates IDs and verifies that the logged-in doctor owns
+// the consultation and that the patient is still active.
+async function authorizeDeleteRequest(req, res) {
+  const { doctorId, patientId, consultationId } = req.params;
+
+  const ids = [doctorId, patientId, consultationId];
+
+  if (
+    !ids.every(
+      (id) => /^\d+$/.test(String(id)) && Number(id) > 0
+    )
+  ) {
+    res.status(400).json({
+      message: 'Invalid doctor, patient, or consultation ID.'
+    });
+    return null;
+  }
+
+  if (req.user.role !== 'DOCTOR') {
+    res.status(403).json({
+      message: 'Only doctors can perform this action.'
+    });
+    return null;
+  }
+
+  const [rows] = await pool.execute(
+    `SELECT c.consultation_id
+     FROM consultation c
+     JOIN patient p
+       ON p.patient_id = c.patient_id
+     JOIN users u
+       ON u.user_id = ?
+      AND u.doctor_id = c.doctor_id
+      AND u.role = 'DOCTOR'
+      AND u.is_active = TRUE
+     WHERE c.doctor_id = ?
+       AND c.patient_id = ?
+       AND c.consultation_id = ?
+       AND p.is_active = TRUE`,
+    [
+      req.user.userId,
+      Number(doctorId),
+      Number(patientId),
+      Number(consultationId)
+    ]
+  );
+
+  if (rows.length === 0) {
+    res.status(404).json({
+      message:
+        'Consultation not found, patient inactive, or you are not authorized to access it.'
+    });
+    return null;
+  }
+
+  return {
+    doctorId: Number(doctorId),
+    patientId: Number(patientId),
+    consultationId: Number(consultationId)
+  };
+}
+
+
+// 1. DELETE A LAB RESULT
+// DELETE /api/doctors/:doctorId/patients/:patientId/consultations/:consultationId/lab-results/:labId
+
+router.delete(
+  '/:doctorId/patients/:patientId/consultations/:consultationId/lab-results/:labId',
+  authenticateToken,
+  async (req, res) => {
+    try {
+      const authorized = await authorizeDeleteRequest(req, res);
+
+      if (!authorized) return;
+
+      const { labId } = req.params;
+
+      if (!/^\d+$/.test(String(labId)) || Number(labId) <= 0) {
+        return res.status(400).json({
+          message: 'Invalid lab result ID.'
+        });
+      }
+
+      const [result] = await pool.execute(
+        `DELETE FROM lab_result
+         WHERE lab_id = ?
+           AND consultation_id = ?`,
+        [Number(labId), authorized.consultationId]
+      );
+
+      if (result.affectedRows === 0) {
+        return res.status(404).json({
+          message: 'Lab result not found.'
+        });
+      }
+
+      return res.status(200).json({
+        message: 'Lab result deleted successfully.'
+      });
+    } catch (error) {
+      console.error('Delete lab result error:', error);
+
+      return res.status(500).json({
+        message: 'Unable to delete lab result.'
+      });
+    }
+  }
+);
+
+
+// 2. DELETE A DIAGNOSIS
+// DELETE /api/doctors/:doctorId/patients/:patientId/consultations/:consultationId/diagnoses/:diagnosisId
+
+router.delete(
+  '/:doctorId/patients/:patientId/consultations/:consultationId/diagnoses/:diagnosisId',
+  authenticateToken,
+  async (req, res) => {
+    try {
+      const authorized = await authorizeDeleteRequest(req, res);
+
+      if (!authorized) return;
+
+      const { diagnosisId } = req.params;
+
+      if (
+        !/^\d+$/.test(String(diagnosisId)) ||
+        Number(diagnosisId) <= 0
+      ) {
+        return res.status(400).json({
+          message: 'Invalid diagnosis ID.'
+        });
+      }
+
+      const [result] = await pool.execute(
+        `DELETE FROM diagnosis
+         WHERE diagnosis_id = ?
+           AND consultation_id = ?`,
+        [Number(diagnosisId), authorized.consultationId]
+      );
+
+      if (result.affectedRows === 0) {
+        return res.status(404).json({
+          message: 'Diagnosis not found.'
+        });
+      }
+
+      return res.status(200).json({
+        message: 'Diagnosis deleted successfully.'
+      });
+    } catch (error) {
+      console.error('Delete diagnosis error:', error);
+
+      return res.status(500).json({
+        message: 'Unable to delete diagnosis.'
+      });
+    }
+  }
+);
+
+
+// 3. DELETE A TREATMENT
+// DELETE /api/doctors/:doctorId/patients/:patientId/consultations/:consultationId/treatments/:medicationId
+
+router.delete(
+  '/:doctorId/patients/:patientId/consultations/:consultationId/treatments/:medicationId',
+  authenticateToken,
+  async (req, res) => {
+    try {
+      const authorized = await authorizeDeleteRequest(req, res);
+
+      if (!authorized) return;
+
+      const { medicationId } = req.params;
+
+      if (
+        !/^\d+$/.test(String(medicationId)) ||
+        Number(medicationId) <= 0
+      ) {
+        return res.status(400).json({
+          message: 'Invalid medication ID.'
+        });
+      }
+
+      const [result] = await pool.execute(
+        `DELETE FROM treatment
+         WHERE consultation_id = ?
+           AND medication_id = ?`,
+        [
+          authorized.consultationId,
+          Number(medicationId)
+        ]
+      );
+
+      if (result.affectedRows === 0) {
+        return res.status(404).json({
+          message: 'Treatment not found.'
+        });
+      }
+
+      return res.status(200).json({
+        message: 'Treatment deleted successfully.'
+      });
+    } catch (error) {
+      console.error('Delete treatment error:', error);
+
+      return res.status(500).json({
+        message: 'Unable to delete treatment.'
+      });
+    }
+  }
+);
+
+
+// 4. DELETE A CONSULTATION OUTCOME
+// DELETE /api/doctors/:doctorId/patients/:patientId/consultations/:consultationId/outcome
+
+router.delete(
+  '/:doctorId/patients/:patientId/consultations/:consultationId/outcome',
+  authenticateToken,
+  async (req, res) => {
+    try {
+      const authorized = await authorizeDeleteRequest(req, res);
+
+      if (!authorized) return;
+
+      const [result] = await pool.execute(
+        `DELETE FROM outcome
+         WHERE consultation_id = ?`,
+        [authorized.consultationId]
+      );
+
+      if (result.affectedRows === 0) {
+        return res.status(404).json({
+          message: 'Consultation outcome not found.'
+        });
+      }
+
+      return res.status(200).json({
+        message: 'Consultation outcome deleted successfully.'
+      });
+    } catch (error) {
+      console.error('Delete outcome error:', error);
+
+      return res.status(500).json({
+        message: 'Unable to delete consultation outcome.'
+      });
+    }
+  }
+);
+
+
+// 5. DELETE A CONSULTATION
+// DELETE /api/doctors/:doctorId/patients/:patientId/consultations/:consultationId
+
+router.delete(
+  '/:doctorId/patients/:patientId/consultations/:consultationId',
+  authenticateToken,
+  async (req, res) => {
+    try {
+      const authorized = await authorizeDeleteRequest(req, res);
+
+      if (!authorized) return;
+
+      const [result] = await pool.execute(
+        `DELETE FROM consultation
+         WHERE consultation_id = ?
+           AND patient_id = ?
+           AND doctor_id = ?`,
+        [
+          authorized.consultationId,
+          authorized.patientId,
+          authorized.doctorId
+        ]
+      );
+
+      if (result.affectedRows === 0) {
+        return res.status(404).json({
+          message: 'Consultation not found.'
+        });
+      }
+
+      return res.status(200).json({
+        message:
+          'Consultation and its dependent clinical records deleted successfully.'
+      });
+    } catch (error) {
+      console.error('Delete consultation error:', error);
+
+      if (error.code === 'ER_ROW_IS_REFERENCED_2') {
+        return res.status(409).json({
+          message:
+            'Cannot delete this consultation because related records still reference it. Check the foreign key constraints.'
+        });
+      }
+
+      return res.status(500).json({
+        message: 'Unable to delete consultation.'
+      });
+    }
+  }
+);
+
 module.exports = router;

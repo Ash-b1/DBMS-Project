@@ -174,3 +174,131 @@ BEGIN
     FROM outcome
     WHERE consultation_id = p_consultation_id;
 END;
+
+-- =========================================
+-- TRIGGERS
+-- Audit log for deleted clinical records
+-- =========================================
+
+CREATE TABLE IF NOT EXISTS clinical_audit_log (
+    audit_id INT AUTO_INCREMENT PRIMARY KEY,
+    table_name VARCHAR(100) NOT NULL,
+    action_type VARCHAR(20) NOT NULL,
+    record_key VARCHAR(100) NOT NULL,
+    consultation_id INT,
+    action_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- =========================================
+-- 1. AFTER DELETE ON lab_result
+-- =========================================
+
+CREATE TRIGGER after_lab_result_delete
+AFTER DELETE ON lab_result
+FOR EACH ROW
+BEGIN
+    INSERT INTO clinical_audit_log (
+        table_name,
+        action_type,
+        record_key,
+        consultation_id
+    )
+    VALUES (
+        'lab_result',
+        'DELETE',
+        CAST(OLD.lab_id AS CHAR),
+        OLD.consultation_id
+    );
+END;
+
+-- =========================================
+-- 2. AFTER DELETE ON diagnosis
+-- =========================================
+
+CREATE TRIGGER after_diagnosis_delete
+AFTER DELETE ON diagnosis
+FOR EACH ROW
+BEGIN
+    INSERT INTO clinical_audit_log (
+        table_name,
+        action_type,
+        record_key,
+        consultation_id
+    )
+    VALUES (
+        'diagnosis',
+        'DELETE',
+        CAST(OLD.diagnosis_id AS CHAR),
+        OLD.consultation_id
+    );
+END;
+
+-- =========================================
+-- 3. AFTER DELETE ON treatment
+-- =========================================
+
+CREATE TRIGGER after_treatment_delete
+AFTER DELETE ON treatment
+FOR EACH ROW
+BEGIN
+    INSERT INTO clinical_audit_log (
+        table_name,
+        action_type,
+        record_key,
+        consultation_id
+    )
+    VALUES (
+        'treatment',
+        'DELETE',
+        CONCAT(
+            OLD.consultation_id,
+            ':',
+            OLD.medication_id
+        ),
+        OLD.consultation_id
+    );
+END;
+
+-- =========================================
+-- 4. AFTER DELETE ON outcome
+-- =========================================
+
+CREATE TRIGGER after_outcome_delete
+AFTER DELETE ON outcome
+FOR EACH ROW
+BEGIN
+    INSERT INTO clinical_audit_log (
+        table_name,
+        action_type,
+        record_key,
+        consultation_id
+    )
+    VALUES (
+        'outcome',
+        'DELETE',
+        CAST(OLD.outcome_id AS CHAR),
+        OLD.consultation_id
+    );
+END;
+
+-- =========================================
+-- 5. AFTER DELETE ON consultation
+-- =========================================
+
+CREATE TRIGGER after_consultation_delete
+AFTER DELETE ON consultation
+FOR EACH ROW
+BEGIN
+    INSERT INTO clinical_audit_log (
+        table_name,
+        action_type,
+        record_key,
+        consultation_id
+    )
+    VALUES (
+        'consultation',
+        'DELETE',
+        CAST(OLD.consultation_id AS CHAR),
+        OLD.consultation_id
+    );
+END;
