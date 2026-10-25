@@ -85,7 +85,7 @@ async function fetchCaseDetails(ids) {
     `SELECT consultation_id, test_name, test_value, unit, reference_range, result_status
        FROM lab_result WHERE consultation_id IN (?)`, [ids]);
   const [treatments] = await pool.query(
-    `SELECT t.consultation_id, t.treatment_name, t.treatment_type, t.start_date, t.end_date,
+    `SELECT t.consultation_id, t.treatment_name, t.treatment_type, DATE_FORMAT(t.start_date, '%Y-%m-%d') AS start_date, DATE_FORMAT(t.end_date, '%Y-%m-%d') AS end_date,
             m.medication_name, tm.dosage, tm.frequency, tm.route
        FROM treatment t
        LEFT JOIN medication m ON m.medication_id = t.medication_id
@@ -93,7 +93,7 @@ async function fetchCaseDetails(ids) {
               ON tm.consultation_id = t.consultation_id AND tm.medication_id = t.medication_id
       WHERE t.consultation_id IN (?)`, [ids]);
   const [outcomes] = await pool.query(
-    `SELECT consultation_id, outcome_status, follow_up_required, follow_up_date, outcome_notes
+    `SELECT consultation_id, outcome_status, follow_up_required, DATE_FORMAT(follow_up_date, '%Y-%m-%d') AS follow_up_date, outcome_notes
        FROM outcome WHERE consultation_id IN (?)`, [ids]);
 
   const byId = new Map();
