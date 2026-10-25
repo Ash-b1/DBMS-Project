@@ -9,6 +9,7 @@ const adminAuthRoutes = require('./routes/adminAuth');
 const doctorClinicalRoutes = require('./routes/doctorClinical');
 const adminClinicalRoutes = require('./routes/adminClinical');
 const vectorSearchRoutes = require('./routes/vectorSearch');
+const analyticsRoutes = require('./routes/analytics');
 const app = express();
 
 app.use(cors({
@@ -28,6 +29,7 @@ app.use('/api/admin-auth', adminAuthRoutes);
 app.use('/api/doctors', doctorClinicalRoutes);
 app.use('/api/admin-clinical', adminClinicalRoutes);
 app.use('/api/cases', vectorSearchRoutes);
+app.use('/api/analytics', analyticsRoutes);
 const PORT = Number(process.env.PORT || 5000);
 
 app.listen(PORT, () => {
