@@ -11,9 +11,9 @@ INSERT INTO doctor VALUES
 (203, 103, 'Dr. Example Three', 'Endocrinologist', 'doc3@example.com');
 
 INSERT INTO patient VALUES
-(401, 'Patient One', '1990-05-10', 'Female', 'O+', '9000000001', 'p1@example.com'),
-(402, 'Patient Two', '1985-08-21', 'Male', 'A+', '9000000002', 'p2@example.com'),
-(403, 'Patient Three', '1978-12-02', 'Female', 'B+', '9000000003', 'p3@example.com');
+(401, 'Patient One', '1990-05-10', 'Female', 'O+', '9000000001', 'p1@example.com',1),
+(402, 'Patient Two', '1985-08-21', 'Male', 'A+', '9000000002', 'p2@example.com',1),
+(403, 'Patient Three', '1978-12-02', 'Female', 'B+', '9000000003', 'p3@example.com',1);
 
 INSERT INTO allergy VALUES
 (501, 401, 'Example allergen A', 'Rash', 'Mild'),
