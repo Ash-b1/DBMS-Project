@@ -12,8 +12,6 @@
     "vector:search": "node scripts/search-cases.js",
     "vector:seed": "node scripts/seed-vector-cases.js",
     "vector:test": "node scripts/test-vector-relevance.js",
-    "mongo:test": "node scripts/test-mongodb.js",
-    "analytics:sync": "node scripts/sync-clinical-analytics.js",
     "accounts:create": "node scripts/createDoctors.js"
   },
   "dependencies": {
@@ -25,7 +23,6 @@
     "dotenv": "^18.0.9",
     "express": "^5.3.0",
     "jsonwebtoken": "^9.0.3",
-    "mongodb": "^7.7.0",
     "mysql2": "^3.24.6"
   },
   "devDependencies": {

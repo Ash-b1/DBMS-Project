@@ -611,7 +611,7 @@ export default function DoctorDashboard() {
             }}
           >
             <h2 style={{ marginTop: 0 }}>
-              NoSQL Clinical Analytics
+              Clinical Analytics (MySQL)
             </h2>
 
             <p style={{ color: '#526078' }}>

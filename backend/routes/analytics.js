@@ -1,6 +1,6 @@
+
 const express = require('express');
 const pool = require('../db');
-const { getMongoDb } = require('../mongo');
 const {
   authenticateToken,
   authorizeRoles
@@ -31,77 +31,75 @@ router.get(
         });
       }
 
-      const db = await getMongoDb();
-      const collection = db.collection('clinical_case_analytics');
+      const [
+        [totalRows],
+        [diagnosisFrequency],
+        [consultationStatuses],
+        [outcomeStatuses]
+      ] = await Promise.all([
+        pool.execute(
+          `SELECT COUNT(DISTINCT c.consultation_id) AS total
+           FROM consultation c
+           JOIN patient p ON p.patient_id = c.patient_id
+           WHERE p.is_active = TRUE`
+        ),
 
-      const [totalConsultations, diagnosisFrequency, consultationStatuses, outcomeStatuses] =
-        await Promise.all([
-          collection.countDocuments(),
+        pool.execute(
+          `SELECT d.diagnosis_name AS name,
+                  COUNT(*) AS count
+           FROM consultation c
+           JOIN patient p ON p.patient_id = c.patient_id
+           JOIN diagnosis d
+             ON d.consultation_id = c.consultation_id
+           WHERE p.is_active = TRUE
+             AND d.diagnosis_name IS NOT NULL
+           GROUP BY d.diagnosis_name
+           ORDER BY count DESC, name ASC
+           LIMIT 8`
+        ),
 
-          collection.aggregate([
-            { $unwind: '$diagnoses' },
-            {
-              $group: {
-                _id: '$diagnoses.name',
-                count: { $sum: 1 }
-              }
-            },
-            { $sort: { count: -1, _id: 1 } },
-            { $limit: 8 },
-            {
-              $project: {
-                _id: 0,
-                name: '$_id',
-                count: 1
-              }
-            }
-          ]).toArray(),
+        pool.execute(
+          `SELECT COALESCE(c.status, 'Unspecified') AS name,
+                  COUNT(DISTINCT c.consultation_id) AS count
+           FROM consultation c
+           JOIN patient p ON p.patient_id = c.patient_id
+           WHERE p.is_active = TRUE
+           GROUP BY c.status
+           ORDER BY count DESC, name ASC`
+        ),
 
-          collection.aggregate([
-            {
-              $group: {
-                _id: '$consultationStatus',
-                count: { $sum: 1 }
-              }
-            },
-            { $sort: { count: -1, _id: 1 } },
-            {
-              $project: {
-                _id: 0,
-                name: '$_id',
-                count: 1
-              }
-            }
-          ]).toArray(),
-
-          collection.aggregate([
-            {
-              $group: {
-                _id: '$outcomeStatus',
-                count: { $sum: 1 }
-              }
-            },
-            { $sort: { count: -1, _id: 1 } },
-            {
-              $project: {
-                _id: 0,
-                name: '$_id',
-                count: 1
-              }
-            }
-          ]).toArray()
-        ]);
+        pool.execute(
+          `SELECT COALESCE(o.outcome_status, 'Unspecified') AS name,
+                  COUNT(DISTINCT o.consultation_id) AS count
+           FROM outcome o
+           JOIN consultation c
+             ON c.consultation_id = o.consultation_id
+           JOIN patient p ON p.patient_id = c.patient_id
+           WHERE p.is_active = TRUE
+           GROUP BY o.outcome_status
+           ORDER BY count DESC, name ASC`
+        )
+      ]);
 
       return res.json({
-        totalConsultations,
-        diagnosisFrequency,
-        consultationStatuses,
-        outcomeStatuses
+        totalConsultations: Number(totalRows[0].total),
+        diagnosisFrequency: diagnosisFrequency.map(row => ({
+          name: row.name,
+          count: Number(row.count)
+        })),
+        consultationStatuses: consultationStatuses.map(row => ({
+          name: row.name,
+          count: Number(row.count)
+        })),
+        outcomeStatuses: outcomeStatuses.map(row => ({
+          name: row.name,
+          count: Number(row.count)
+        }))
       });
     } catch (error) {
-      console.error('NoSQL analytics error:', error.message);
+      console.error('Clinical analytics error:', error.message);
       return res.status(500).json({
-        message: 'Unable to load NoSQL analytics.'
+        message: 'Unable to load clinical analytics.'
       });
     }
   }
