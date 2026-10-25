@@ -1,5 +1,4 @@
-
-'use client';
+ 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -103,14 +102,14 @@ export default function DoctorDashboard() {
   const [formError, setFormError] = useState('');
   const [saving, setSaving] = useState(false);
 
-  // Chroma vector similarity search
+  // Chroma vector similarity search.
   const [caseQuery, setCaseQuery] = useState('');
   const [caseResults, setCaseResults] = useState([]);
   const [caseSearchLoading, setCaseSearchLoading] = useState(false);
   const [caseSearchError, setCaseSearchError] = useState('');
   const [caseSearchDone, setCaseSearchDone] = useState(false);
 
-  // MongoDB NoSQL analytics
+  // Doctor-specific MySQL analytics.
   const [analytics, setAnalytics] = useState(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(true);
   const [analyticsError, setAnalyticsError] = useState('');
@@ -138,9 +137,7 @@ export default function DoctorDashboard() {
       const token = sessionStorage.getItem('token');
 
       if (!token) {
-        setCaseSearchError(
-          'Your session has expired. Please log in again.'
-        );
+        router.replace('/login');
         return;
       }
 
@@ -157,6 +154,13 @@ export default function DoctorDashboard() {
       });
 
       const data = await response.json();
+
+      if (response.status === 401 || response.status === 403) {
+        sessionStorage.removeItem('token');
+        sessionStorage.removeItem('user');
+        router.replace('/login');
+        return;
+      }
 
       if (!response.ok) {
         throw new Error(
@@ -177,15 +181,13 @@ export default function DoctorDashboard() {
     }
   };
 
-  const loadPatients = useCallback(async () => {
-    setLoading(true);
-    setError('');
-
-    const token = sessionStorage.getItem('token');
+const loadPatients = useCallback(async () => {
+  const token = sessionStorage.getItem('token');
     const savedUser = sessionStorage.getItem('user');
 
     if (!token || !savedUser) {
       router.replace('/login');
+      setLoading(false);
       return;
     }
 
@@ -197,6 +199,7 @@ export default function DoctorDashboard() {
       sessionStorage.removeItem('token');
       sessionStorage.removeItem('user');
       router.replace('/login');
+      setLoading(false);
       return;
     }
 
@@ -206,6 +209,7 @@ export default function DoctorDashboard() {
       !Number.isInteger(Number(user.doctorId))
     ) {
       router.replace('/login');
+      setLoading(false);
       return;
     }
 
@@ -273,11 +277,15 @@ export default function DoctorDashboard() {
     }
   }, [router]);
 
-  useEffect(() => {
-    loadPatients();
-  }, [loadPatients]);
+useEffect(() => {
+  const timeoutId = setTimeout(() => {
+    void loadPatients();
+  }, 0);
 
-  // Load aggregated statistics from the MongoDB analytics API.
+  return () => clearTimeout(timeoutId);
+}, [loadPatients]);
+
+  // Load analytics calculated by the authenticated doctor's MySQL queries.
   useEffect(() => {
     let cancelled = false;
 
@@ -289,21 +297,24 @@ export default function DoctorDashboard() {
         const token = sessionStorage.getItem('token');
 
         if (!token) {
-          throw new Error(
-            'Please log in to view analytics.'
-          );
+          router.replace('/login');
+          return;
         }
 
-        const response = await fetch(
-          `${API_URL}/api/analytics`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`
-            }
+        const response = await fetch(`${API_URL}/api/analytics`, {
+          headers: {
+            Authorization: `Bearer ${token}`
           }
-        );
+        });
 
         const data = await response.json();
+
+        if (response.status === 401 || response.status === 403) {
+          sessionStorage.removeItem('token');
+          sessionStorage.removeItem('user');
+          router.replace('/login');
+          return;
+        }
 
         if (!response.ok) {
           throw new Error(
@@ -332,7 +343,7 @@ export default function DoctorDashboard() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [router]);
 
   function logout() {
     sessionStorage.removeItem('token');
@@ -349,6 +360,11 @@ export default function DoctorDashboard() {
 
     try {
       const token = sessionStorage.getItem('token');
+
+      if (!token) {
+        router.replace('/login');
+        return;
+      }
 
       const response = await fetch(
         `${API_URL}/api/doctors/${doctorId}/patients/${patient.patient_id}`,
@@ -454,8 +470,7 @@ export default function DoctorDashboard() {
       };
 
       if (!isEditing) {
-        payload.consultation_type =
-          formData.consultation_type;
+        payload.consultation_type = formData.consultation_type;
         payload.chief_complaint =
           formData.chief_complaint.trim() ||
           'Initial patient registration';
@@ -569,9 +584,7 @@ export default function DoctorDashboard() {
             CLINICAL DECISION SUPPORT
           </p>
 
-          <h1 style={{ margin: 0 }}>
-            Doctor Dashboard
-          </h1>
+          <h1 style={{ margin: 0 }}>Doctor Dashboard</h1>
 
           <p style={{ color: '#526078' }}>
             Welcome, {doctorName}. Your patient list is below.
@@ -602,7 +615,7 @@ export default function DoctorDashboard() {
 
       {!loading && !error && (
         <>
-          {/* CARD 1: MongoDB NoSQL aggregation */}
+          {/* CARD 1: Doctor-specific MySQL analytics */}
           <section
             style={{
               ...cardStyle,
@@ -615,12 +628,10 @@ export default function DoctorDashboard() {
             </h2>
 
             <p style={{ color: '#526078' }}>
-              Aggregated clinical statistics powered by MongoDB.
+              Aggregated clinical statistics for your consultations, powered by MySQL.
             </p>
 
-            {analyticsLoading && (
-              <p>Loading analytics...</p>
-            )}
+            {analyticsLoading && <p>Loading analytics...</p>}
 
             {analyticsError && (
               <p role="alert" style={{ color: '#b91c1c' }}>
@@ -650,7 +661,7 @@ export default function DoctorDashboard() {
                       Total consultations
                     </p>
                     <h2 style={{ marginBottom: 0 }}>
-                      {analytics.totalConsultations}
+                      {Number(analytics.totalConsultations) || 0}
                     </h2>
                   </div>
 
@@ -662,6 +673,36 @@ export default function DoctorDashboard() {
                     }}
                   >
                     <p style={{ margin: 0, color: '#5b21b6' }}>
+                      Unique patients
+                    </p>
+                    <h2 style={{ marginBottom: 0 }}>
+                      {Number(analytics.uniquePatients) || 0}
+                    </h2>
+                  </div>
+
+                  <div
+                    style={{
+                      padding: '18px',
+                      borderRadius: '10px',
+                      background: '#ecfdf5'
+                    }}
+                  >
+                    <p style={{ margin: 0, color: '#166534' }}>
+                      Completed consultations
+                    </p>
+                    <h2 style={{ marginBottom: 0 }}>
+                      {Number(analytics.completedConsultations) || 0}
+                    </h2>
+                  </div>
+
+                  <div
+                    style={{
+                      padding: '18px',
+                      borderRadius: '10px',
+                      background: '#fff7ed'
+                    }}
+                  >
+                    <p style={{ margin: 0, color: '#9a3412' }}>
                       Diagnosis categories
                     </p>
                     <h2 style={{ marginBottom: 0 }}>
@@ -685,8 +726,7 @@ export default function DoctorDashboard() {
                       <ul>
                         {analytics.diagnosisFrequency.map((item, index) => (
                           <li key={item.name ?? index}>
-                            {item.name}:{' '}
-                            <strong>{item.count}</strong>
+                            {item.name}: <strong>{item.count}</strong>
                           </li>
                         ))}
                       </ul>
@@ -702,8 +742,7 @@ export default function DoctorDashboard() {
                       <ul>
                         {analytics.consultationStatuses.map((item, index) => (
                           <li key={item.name ?? index}>
-                            {item.name}:{' '}
-                            <strong>{item.count}</strong>
+                            {item.name}: <strong>{item.count}</strong>
                           </li>
                         ))}
                       </ul>
@@ -719,8 +758,7 @@ export default function DoctorDashboard() {
                       <ul>
                         {analytics.outcomeStatuses.map((item, index) => (
                           <li key={item.name ?? index}>
-                            {item.name}:{' '}
-                            <strong>{item.count}</strong>
+                            {item.name}: <strong>{item.count}</strong>
                           </li>
                         ))}
                       </ul>
@@ -741,9 +779,7 @@ export default function DoctorDashboard() {
               borderTop: '4px solid #7c3aed'
             }}
           >
-            <h2 style={{ marginTop: 0 }}>
-              Clinical Case Retrieval
-            </h2>
+            <h2 style={{ marginTop: 0 }}>Clinical Case Retrieval</h2>
 
             <p style={{ color: '#526078' }}>
               Search historical cases using symptoms, clinical notes,
@@ -762,9 +798,7 @@ export default function DoctorDashboard() {
               <input
                 type="text"
                 value={caseQuery}
-                onChange={(event) =>
-                  setCaseQuery(event.target.value)
-                }
+                onChange={(event) => setCaseQuery(event.target.value)}
                 placeholder="e.g. fever, cough, elevated glucose..."
                 maxLength={500}
                 minLength={3}
@@ -786,9 +820,7 @@ export default function DoctorDashboard() {
                   opacity: caseSearchLoading ? 0.7 : 1
                 }}
               >
-                {caseSearchLoading
-                  ? 'Searching...'
-                  : 'Search Cases'}
+                {caseSearchLoading ? 'Searching...' : 'Search Cases'}
               </button>
             </form>
 
@@ -800,14 +832,10 @@ export default function DoctorDashboard() {
 
             {caseSearchDone && (
               <div style={{ marginTop: '24px' }}>
-                <h3>
-                  Similar Historical Cases ({caseResults.length})
-                </h3>
+                <h3>Similar Historical Cases ({caseResults.length})</h3>
 
                 {caseResults.length === 0 ? (
-                  <p>
-                    No similar cases were found for this query.
-                  </p>
+                  <p>No similar cases were found for this query.</p>
                 ) : (
                   <div style={{ display: 'grid', gap: '16px' }}>
                     {caseResults.map((result, index) => (
@@ -876,9 +904,7 @@ export default function DoctorDashboard() {
 
                         {result.matchedText && (
                           <details>
-                            <summary>
-                              View matching clinical summary
-                            </summary>
+                            <summary>View matching clinical summary</summary>
                             <p>
                               {typeof result.matchedText === 'string'
                                 ? result.matchedText
@@ -894,8 +920,7 @@ export default function DoctorDashboard() {
                               fontSize: '13px'
                             }}
                           >
-                            Vector distance:{' '}
-                            {result.distance.toFixed(4)}
+                            Vector distance: {result.distance.toFixed(4)}
                             {' '}(lower generally means a closer match)
                           </p>
                         )}
@@ -940,9 +965,7 @@ export default function DoctorDashboard() {
               }}
             >
               <h2 style={{ marginTop: 0 }}>
-                {editingPatient
-                  ? 'Edit Patient Details'
-                  : 'Register New Patient'}
+                {editingPatient ? 'Edit Patient Details' : 'Register New Patient'}
               </h2>
 
               <p style={{ color: '#526078', fontSize: '14px' }}>
@@ -996,9 +1019,7 @@ export default function DoctorDashboard() {
                       <option value="Female">Female</option>
                       <option value="Male">Male</option>
                       <option value="Other">Other</option>
-                      <option value="Prefer not to say">
-                        Prefer not to say
-                      </option>
+                      <option value="Prefer not to say">Prefer not to say</option>
                     </select>
                   </label>
 
@@ -1134,8 +1155,7 @@ export default function DoctorDashboard() {
             <section style={cardStyle}>
               <p style={{ margin: 0 }}>
                 No patients were found for your account. Use{' '}
-                <strong>+ Add Patient</strong> to register your first
-                patient.
+                <strong>+ Add Patient</strong> to register your first patient.
               </p>
             </section>
           ) : (
@@ -1149,17 +1169,11 @@ export default function DoctorDashboard() {
               }}
             >
               {patients.map((patient) => (
-                <section
-                  key={patient.patient_id}
-                  style={cardStyle}
-                >
-                  <h3 style={{ marginTop: 0 }}>
-                    {patient.patient_name}
-                  </h3>
+                <section key={patient.patient_id} style={cardStyle}>
+                  <h3 style={{ marginTop: 0 }}>{patient.patient_name}</h3>
 
                   <p>
-                    <strong>Patient ID:</strong>{' '}
-                    {patient.patient_id}
+                    <strong>Patient ID:</strong> {patient.patient_id}
                   </p>
 
                   <p>
@@ -1170,8 +1184,7 @@ export default function DoctorDashboard() {
                   </p>
 
                   <p>
-                    <strong>Gender:</strong>{' '}
-                    {patient.gender || 'Not available'}
+                    <strong>Gender:</strong> {patient.gender || 'Not available'}
                   </p>
 
                   <p>
@@ -1180,13 +1193,11 @@ export default function DoctorDashboard() {
                   </p>
 
                   <p>
-                    <strong>Phone:</strong>{' '}
-                    {patient.phone || 'Not available'}
+                    <strong>Phone:</strong> {patient.phone || 'Not available'}
                   </p>
 
                   <p>
-                    <strong>Email:</strong>{' '}
-                    {patient.email || 'Not available'}
+                    <strong>Email:</strong> {patient.email || 'Not available'}
                   </p>
 
                   <hr
@@ -1202,22 +1213,18 @@ export default function DoctorDashboard() {
                   <p>
                     <strong>Date:</strong>{' '}
                     {patient.latestConsultation.consultation_date
-                      ? String(
-                          patient.latestConsultation.consultation_date
-                        ).slice(0, 10)
+                      ? String(patient.latestConsultation.consultation_date).slice(0, 10)
                       : 'Not available'}
                   </p>
 
                   <p>
                     <strong>Reason:</strong>{' '}
-                    {patient.latestConsultation.chief_complaint ||
-                      'Not available'}
+                    {patient.latestConsultation.chief_complaint || 'Not available'}
                   </p>
 
                   <p>
                     <strong>Status:</strong>{' '}
-                    {patient.latestConsultation.status ||
-                      'Not available'}
+                    {patient.latestConsultation.status || 'Not available'}
                   </p>
 
                   <div

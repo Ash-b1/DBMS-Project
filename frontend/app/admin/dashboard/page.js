@@ -11,30 +11,34 @@ export default function AdminDashboard() {
   const [username, setUsername] = useState('');
   const [adminId, setAdminId] = useState(null);
 
-  useEffect(() => {
-    const token = sessionStorage.getItem('token');
-    const storedUser = sessionStorage.getItem('user');
+    useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      const token = sessionStorage.getItem('token');
+      const storedUser = sessionStorage.getItem('user');
 
-    if (!token || !storedUser) {
-      router.replace('/login');
-      return;
-    }
-
-    try {
-      const user = JSON.parse(storedUser);
-
-      if (user.role !== 'ADMIN' || !user.userId) {
+      if (!token || !storedUser) {
         router.replace('/login');
         return;
       }
 
-      setUsername(user.username || 'Administrator');
-      setAdminId(user.userId);
-    } catch {
-      sessionStorage.removeItem('token');
-      sessionStorage.removeItem('user');
-      router.replace('/login');
-    }
+      try {
+        const user = JSON.parse(storedUser);
+
+        if (user.role !== 'ADMIN' || !user.userId) {
+          router.replace('/login');
+          return;
+        }
+
+        setUsername(user.username || 'Administrator');
+        setAdminId(user.userId);
+      } catch {
+        sessionStorage.removeItem('token');
+        sessionStorage.removeItem('user');
+        router.replace('/login');
+      }
+    }, 0);
+
+    return () => clearTimeout(timeoutId);
   }, [router]);
 
   function handleLogout() {
